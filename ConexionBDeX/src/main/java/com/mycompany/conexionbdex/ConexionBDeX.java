@@ -11,31 +11,41 @@ import java.sql.Statement;
 import java.util.Scanner;
 import oracle.ucp.jdbc.PoolDataSource;
 import oracle.ucp.jdbc.PoolDataSourceFactory;
+import java.time.LocalDate;
 
 public class ConexionBDeX {
+    
+    //declaramos el objeto PoolDataSource como una constante static
+    //La clase PoolDataSource nos permite configurar el número de conexiones
+    //iniciales, así como el número de conexiones máximas y mínimas
+    //permitidas
+    
 
-    //static final String DB_URL = "jdbc:mysql://localhost:3306/jcvd";
-    //static final String USER = "alejandro";
-    //static final String PASS = "1234";
-    private static final PoolDataSource pool;
+    private static final PoolDataSource POOL = PoolDataSourceFactory.getPoolDataSource();
 
-    static {
-        try {
-            pool = PoolDataSourceFactory.getPoolDataSource();
-            pool.setConnectionFactoryClassName("com.mysql.cj.jdbc.MysqlDataSource");
-            pool.setURL("jdbc:mysql://localhost:3306/jcvd");
-            pool.setUser("alejandro");
-            pool.setPassword("1234");
-            pool.setInitialPoolSize(10);
-            pool.setMinPoolSize(10);
-            pool.setMaxPoolSize(50);
-        } catch (SQLException e) {
-            throw new RuntimeException("No se ha podido configurar correctamente el pool de conexiones", e);
-        }
-    }
+    
+    
+
 
     public static void main(String[] args) {
 
+        try {
+
+            POOL.setConnectionFactoryClassName("com.mysql.cj.jdbc.MysqlDataSource"); //establecemos el tipo
+            //de conexión
+            POOL.setURL("jdbc:mysql://localhost:3306/jcvd"); //establecemos la dirección de nuestra
+            //base de datos
+            POOL.setUser("alejandro"); //establecemos nuestro nombre de usuario
+            POOL.setPassword("1234"); //establecemos nuestra contraseña
+            POOL.setInitialPoolSize(10); //establecemos el tamaño inicial del pool
+            POOL.setMinPoolSize(10); //establecemos el tamaño mínimo del pool
+            POOL.setMaxPoolSize(50); //establecemos el tamaño máximo del pool
+        } catch (SQLException e) {
+            throw new RuntimeException("No se ha podido configurar correctamente el pool de conexiones", e);
+        }
+
+        //comprobamos si un videojuego se encuentra en nuestra base de 
+        //datos pasandole el nombre del mismo
         boolean prueba;
 
         String nombre = "Castlevania";
@@ -49,11 +59,13 @@ public class ConexionBDeX {
         System.out.println("------------------------");
         System.out.println("------------------------");
 
+        //añadimos un videojuego a nuestra base de datos
+        //mediante la construcción de un objeto Videojuego
         String nombreVideojuego = "Megaman X";
 
         String categoria = "Accion";
 
-        Date fecha = new Date(93, 12, 17);
+        LocalDate fecha = LocalDate.of(1993, 12, 17);
 
         String compania = "Capcom";
 
@@ -69,6 +81,7 @@ public class ConexionBDeX {
         System.out.println("------------------------");
         System.out.println("------------------------");
 
+        //lanzamos una consulta
         lanzaConsulta();
 
         System.out.println("------------------------");
@@ -77,6 +90,8 @@ public class ConexionBDeX {
         System.out.println("------------------------");
         System.out.println("------------------------");
 
+        //borramos un videojuego de la base de datos
+        //mediante un nombre pasado como parámetro
         String nombre2 = "Megaman X";
 
         //si no está comentado este método, borrará el videojuego creado anteriormente
@@ -90,97 +105,104 @@ public class ConexionBDeX {
         System.out.println("------------------------");
         System.out.println("------------------------");
 
+        //efectuamos un nuevo registro mediante 
+        //la entrada por teclado (Scanner)
         nuevoRegistro2();
 
     }
 
     public static boolean buscaNombre(String nombre) {
+        //con este método, buscamos un videojuego en la base de datos
+        //mediante un nombre pasado como parámetro. Si el juego existe
+        //devolvemos un boolean de valor true. Si no, el valor del
+        //boolean será false
+        //Utilizaremos las clases Connection, PreparedStatement
+        //y ResultSet
         boolean encontrado = false;
-        Connection conn = null;
+        Connection conexion = null;
+        PreparedStatement sentencia = null;
+        ResultSet resultado = null;
 
         String QUERY = "SELECT * FROM videojuegos WHERE NOMBRE=?";
-
+        //utilizamos la consulta de arriba para buscar el juego
         System.out.println("Buscando información sobre el videojuego llamado " + nombre);
 
         try {
-            conn = pool.getConnection();
+            conexion = POOL.getConnection();
+            sentencia = conexion.prepareStatement(QUERY);
+            sentencia.setString(1, nombre);
+            resultado = sentencia.executeQuery();
+            while (resultado.next()) { //mientra se lea en la base de datos
+                String nombreVideojuego = resultado.getString("Nombre"); //se guarda el nombre del 
+                //videojuego que se esté leyendo en ese momento en una variable
 
-            try (PreparedStatement sentencia = conn.prepareStatement(QUERY)) {
-                sentencia.setString(1, nombre);
+                if (nombreVideojuego != null) { //si el nombre no es null
+                    //mostramos la información del juego
+                    System.out.println("ID: " + resultado.getInt("id"));
+                    System.out.println("Nombre: " + nombreVideojuego);
+                    System.out.println("Categoría: " + resultado.getString("Categoría"));
+                    System.out.println("Fecha Lanzamiento: " + resultado.getDate("Fecha_lanzamiento"));
+                    System.out.println("Compañía: " + resultado.getString("Compañía"));
+                    System.out.println("Precio: " + resultado.getFloat("Precio"));
+                    System.out.println("");
 
-                try (ResultSet rs = sentencia.executeQuery()) {
-                    while (rs.next()) {
-                        String nombreVideojuego = rs.getString("Nombre");
-
-                        if (nombreVideojuego != null) {
-                            System.out.println("ID: " + rs.getInt("id"));
-                            System.out.println("Nombre: " + nombreVideojuego);
-                            System.out.println("Categoría: " + rs.getString("Categoría"));
-                            System.out.println("Fecha Lanzamiento: " + rs.getDate("Fecha_lanzamiento"));
-                            System.out.println("Compañía: " + rs.getString("Compañía"));
-                            System.out.println("Precio: " + rs.getFloat("Precio"));
-                            System.out.println("");
-
-                            encontrado = true;
-                        }
-                    }
-
-                    if (!encontrado) {
-                        System.out.println("No se ha encontrado videojuego con el nombre " + nombre);
-                    }
+                    encontrado = true; //cambiamos el valor de encontrado a true
                 }
+            }
+
+            if (!encontrado) { //si encontrado es false
+                System.out.println("No se ha encontrado videojuego con el nombre " + nombre);
             }
         } catch (SQLException e) {
             e.printStackTrace();
         } finally {
             try {
-                if (conn != null && !conn.isClosed()) {
-                    conn.close();
+                if (conexion != null && !conexion.isClosed()) { //si la conexión no es null
+                    //y no se ha cerrado
+                    conexion.close(); //cerramos la conexión
                 }
             } catch (SQLException e) {
                 e.printStackTrace();
             }
         }
 
-        return encontrado;
+        return encontrado; //devolvemos el valor de encontrado
     }
 
     public static void lanzaConsulta() {
+        //lanzamos una consulta para ver la información de un juego en contreto
         String nombre = "Metroid Prime";
         String QUERY = "SELECT * FROM videojuegos WHERE nombre= ?";
 
-        Connection conn = null;
+        Connection conexion = null;
+        PreparedStatement sentencia = null;
+        ResultSet resultado = null;
 
         try {
-            conn = pool.getConnection();
-            try (PreparedStatement sentencia = conn.prepareStatement(QUERY)) {
-
-                sentencia.setString(1, nombre);
-
-                try (ResultSet rs = sentencia.executeQuery()) {
-                    while (rs.next()) {
-                        System.out.println("ID: " + rs.getInt("id"));
-                        System.out.println("Nombre: " + rs.getString("Nombre"));
-                        System.out.println("Categoría: " + rs.getString("Categoría"));
-                        System.out.println("Fecha Lanzamiento: " + rs.getDate("Fecha_lanzamiento"));
-                        System.out.println("Compañía: " + rs.getString("Compañía"));
-                        System.out.println("Precio: " + rs.getFloat("Precio"));
-                        System.out.println("");
-                        System.out.println("");
-                    }
-                } catch (SQLException e) {
-                    e.printStackTrace();
-                }
-            } catch (SQLException e) {
-                e.printStackTrace();
+            conexion = POOL.getConnection();
+            sentencia = conexion.prepareStatement(QUERY);
+            sentencia.setString(1, nombre);
+            resultado = sentencia.executeQuery();
+            while (resultado.next()) { //mientras se lea la base de datos 
+                //mostramos la información del juego
+                System.out.println("ID: " + resultado.getInt("id"));
+                System.out.println("Nombre: " + resultado.getString("Nombre"));
+                System.out.println("Categoría: " + resultado.getString("Categoría"));
+                System.out.println("Fecha Lanzamiento: " + resultado.getDate("Fecha_lanzamiento"));
+                System.out.println("Compañía: " + resultado.getString("Compañía"));
+                System.out.println("Precio: " + resultado.getFloat("Precio"));
+                System.out.println("");
+                System.out.println("");
             }
+
         } catch (SQLException e) {
             e.printStackTrace();
         } finally {
-            // Cerrar la conexión en el bloque finally
+
             try {
-                if (conn != null && !conn.isClosed()) {
-                    conn.close();
+                if (conexion != null && !conexion.isClosed()) { //si la conexión no es null
+                    //y no está cerrada
+                    conexion.close(); //cerramos  la conexión
                 }
             } catch (SQLException e) {
                 e.printStackTrace();
@@ -189,38 +211,44 @@ public class ConexionBDeX {
     }
 
     public static void nuevoRegistro(Videojuego juego) {
+        //añadimos un nuevo registro a la base de datos 
+        //mediante un objeto de tipo Videojuego pasado por teclado
+
         String QUERY = "INSERT INTO videojuegos (Nombre, Categoría, Fecha_lanzamiento, Compañía, Precio) VALUES (?, ?, ?, ?, ?)";
 
-        Connection conn = null;
+        Connection conexion = null;
+        PreparedStatement sentencia = null;
 
         try {
-            conn = conn = pool.getConnection();
-            try (PreparedStatement sentencia = conn.prepareStatement(QUERY)) {
+            conexion = POOL.getConnection();
+            sentencia = conexion.prepareStatement(QUERY);
+            //utlizamos los getters y setters de la clase Videojuego
+            sentencia.setString(1, juego.getNombre());
+            sentencia.setString(2, juego.getCategoria());
+            //parseamos la fecha LocalDate de la clase Videojuego 
+            //a una admitida por la base de datos
+            Date fechaSql = Date.valueOf(juego.getFecha());
+            sentencia.setDate(3, fechaSql);
+            sentencia.setString(4, juego.getCompania());
+            sentencia.setFloat(5, juego.getPrecio());
 
-                sentencia.setString(1, juego.getNombre());
-                sentencia.setString(2, juego.getCategoria());
-                sentencia.setDate(3, juego.getFecha_Lanzamiento());
-                sentencia.setString(4, juego.getCompania());
-                sentencia.setFloat(5, juego.getPrecio());
+            int filasAfectadas = sentencia.executeUpdate();
 
-                int rowsAffected = sentencia.executeUpdate();
-
-                if (rowsAffected > 0) {
-                    System.out.println("Nuevo registro realizado con éxito");
-                } else {
-                    System.out.println("No se ha podido realizar el nuevo registro");
-                }
-
-            } catch (SQLException e) {
-                e.printStackTrace();
+            if (filasAfectadas > 0) {
+                System.out.println("Nuevo registro realizado con éxito");
+            } else {
+                System.out.println("No se ha podido realizar el nuevo registro");
             }
+
         } catch (SQLException e) {
             e.printStackTrace();
+
         } finally {
 
             try {
-                if (conn != null && !conn.isClosed()) {
-                    conn.close();
+                if (conexion != null && !conexion.isClosed()) { //si la conexión no es nula
+                    //y no se ha cerrado
+                    conexion.close(); //cerramos la conexión
                 }
             } catch (SQLException e) {
                 e.printStackTrace();
@@ -229,26 +257,34 @@ public class ConexionBDeX {
     }
 
     public static boolean EliminarRegistro(String nombre) {
+        //con este método, eliminamos un videojuego
+        //de la base de datos mediante un nombre
+        //pasado como parámetro
+        //devolvemos un boolean que será true si
+        //se elimina y false si no
 
         boolean eliminado = false;
 
         String QUERY = "DELETE FROM videojuegos WHERE Nombre=?";
 
         System.out.println("Borrando el videojuego con el nombre " + nombre);
+        //la sentencia de arriba borrará el videjuego con el nombre pasado
+        //como parámetro
 
-        Connection conn = null;
+        Connection conexion = null;
         PreparedStatement sentencia = null;
 
         try {
-            conn = pool.getConnection();
-            sentencia = conn.prepareStatement(QUERY);
+            conexion = POOL.getConnection();
+            sentencia = conexion.prepareStatement(QUERY);
 
             sentencia.setString(1, nombre);
             int rowsAffected = sentencia.executeUpdate();
 
             if (rowsAffected > 0) {
                 System.out.println("Se ha borrado con éxito");
-                eliminado = true;
+                eliminado = true; //modificado el valor de eliminado 
+                //en caso de que se haya borrado la fila
             } else {
                 System.out.println("No se ha borrado ningún videojuego");
             }
@@ -256,13 +292,14 @@ public class ConexionBDeX {
         } catch (SQLException e) {
             e.printStackTrace();
         } finally {
-            // Cerrar la conexión en el bloque finally
+
             try {
                 if (sentencia != null) {
                     sentencia.close();
                 }
-                if (conn != null && !conn.isClosed()) {
-                    conn.close();
+                if (conexion != null && !conexion.isClosed()) { //si la conexión no es nula
+                    //y no se ha cerrado
+                    conexion.close(); //cerramos la conexión
                 }
             } catch (SQLException e) {
                 e.printStackTrace();
@@ -274,15 +311,19 @@ public class ConexionBDeX {
     }
 
     public static void nuevoRegistro2() {
+        //añadimos a la base de datos un nuevo juego 
+        //mediante entrada por teclado
         String nombre = "";
         String categoria = "";
-        Date fechaLanzamiento = null;
+        LocalDate fechaLanzamiento = null;
         String compania = "";
         float precio;
         Scanner teclado = new Scanner(System.in);
 
         int longitud = 0;
 
+        //ya que el nombre es un campo obligatorio, comprobaremos
+        //que el usuario lo ha introducido 
         while (longitud == 0) {
             System.out.println("Dime el nombre del videojuego: ");
             nombre = teclado.nextLine().trim();
@@ -297,7 +338,7 @@ public class ConexionBDeX {
         System.out.println("Dime la categoría: ");
         categoria = teclado.nextLine().trim();
 
-        System.out.println("Dime el año de lanzamiento, sólo las dos últimas cifras (por ejemplo, 87 para 1987): ");
+        System.out.println("Dime el año de lanzamiento: ");
         int ano = teclado.nextInt();
         teclado.nextLine();
 
@@ -310,7 +351,7 @@ public class ConexionBDeX {
         teclado.nextLine();
 
         // Crear el objeto Date
-        fechaLanzamiento = new Date(ano, mes, dia);
+        fechaLanzamiento = LocalDate.of(ano, mes, dia);
 
         System.out.println("Dime la compañía: ");
         compania = teclado.nextLine().trim();
@@ -319,26 +360,10 @@ public class ConexionBDeX {
         System.out.println("Dime el precio: ");
         precio = teclado.nextFloat();
 
-        Connection conn = null;
+        Videojuego juego = new Videojuego(nombre, categoria, fechaLanzamiento, compania, precio);
 
-        try {
-            conn = pool.getConnection();
+        //llamamos al método nuevoRegistro
+        nuevoRegistro(juego);
 
-            Videojuego juego = new Videojuego(nombre, categoria, fechaLanzamiento, compania, precio);
-
-            nuevoRegistro(juego);
-
-        } catch (SQLException e) {
-            e.printStackTrace();
-        } finally {
-            try {
-                if (conn != null && !conn.isClosed()) {
-                    conn.close();
-                }
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
-        }
     }
-
 }
