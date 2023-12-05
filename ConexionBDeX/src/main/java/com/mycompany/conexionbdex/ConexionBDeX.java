@@ -279,9 +279,9 @@ public class ConexionBDeX {
             sentencia = conexion.prepareStatement(QUERY);
 
             sentencia.setString(1, nombre);
-            int rowsAffected = sentencia.executeUpdate();
+            int filasAfectadas = sentencia.executeUpdate();
 
-            if (rowsAffected > 0) {
+            if (filasAfectadas > 0) {
                 System.out.println("Se ha borrado con éxito");
                 eliminado = true; //modificado el valor de eliminado 
                 //en caso de que se haya borrado la fila
