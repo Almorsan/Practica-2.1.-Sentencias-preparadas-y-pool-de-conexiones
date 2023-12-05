@@ -229,8 +229,8 @@ public class ConexionBDeX {
             sentencia.setString(2, juego.getCategoria());
             //parseamos la fecha LocalDate de la clase Videojuego 
             //a una admitida por la base de datos
-            Date fechaSql = Date.valueOf(juego.getFecha());
-            sentencia.setDate(3, fechaSql);
+            Date fechaBBDD = Date.valueOf(juego.getFecha());
+            sentencia.setDate(3, fechaBBDD);
             sentencia.setString(4, juego.getCompania());
             sentencia.setFloat(5, juego.getPrecio());
 
